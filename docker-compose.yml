@@ -1,0 +1,29 @@
+version: "3"
+
+services:
+
+  haproxy:
+    image: haproxytech/haproxy-debian:2.8
+    volumes:
+      - "./haproxy.cfg:/etc/haproxy/haproxy.cfg"
+      - "./lua_html_email_alerts.lua:/etc/haproxy/lua_html_email_alerts.lua"
+    working_dir: /usr/local/etc/haproxy
+    depends_on:
+      mailviewer:
+        condition: service_healthy
+  mailviewer:
+    image: maildev/maildev
+    ports:
+      - "1080:1080"
+    healthcheck:
+      test: sh -c "netstat -ltpn | grep 1025"
+      interval: 1s
+      retries: 10
+    depends_on:
+      - socat-server
+  socat-server:
+    image: alpine/socat
+    entrypoint: /bin/sh
+    command: -c "while true; do ((socat TCP-LISTEN:8081,fork stdio& socat TCP-LISTEN:8082,fork stdio&); sleep 10; pkill socat; sleep 3); done;"
+
+
